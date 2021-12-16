@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 14 20:50:59 2021
-
-@author: Lenovo
-"""
 
 
 import os
