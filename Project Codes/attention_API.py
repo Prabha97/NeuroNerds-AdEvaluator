@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+
+@author: Jayalath J.R.B.P
+"""
+
 import pickle
 import pandas as pd
 import os
@@ -9,6 +15,7 @@ from flask import render_template, redirect, url_for
 from flask_cors import CORS, cross_origin
 import configparser
 from flask import request
+from DBConnectionAttention import DBConnectionAtten
 
 ######Flask API#########
 app = Flask(__name__)
@@ -16,6 +23,9 @@ cors = CORS(app)
 ############Web App##############
 @app.route('/score',methods=['GET'])
 def index():
+
+    db1 = DBConnectionAtten()
+    
     new_path = 'F:/NeuroNerds-AdEvaluator/Project Data/thilina_EEG.csv'
     model_path = 'F:/NeuroNerds-AdEvaluator/Project Codes/PredictiveModels/svc_model_attention_model.pkl'
 
@@ -34,10 +44,10 @@ def index():
                             'Delta_AF7':data.Delta_AF7,'Alpha_TP10':predict_df.Alpha_TP10,'Alpha_AF7':predict_df.Alpha_AF7,'Prediction_Class': predict})
 
         # save predicted attention data file in attention_data Folder
-        return output.to_csv('E:/4th Year/EEG_RESEARCH_2021/2021-114/Project Data/final_predicted_data.csv',index= False) 
+        return output.to_csv('F:/NeuroNerds-AdEvaluator/Project Data/final_predicted_data.csv',index= False) 
 
     attention_predict()
-    predicted_df= pd.read_csv(r'F:/NeuroNerds-AdEvaluator/Project Data/final_predicted_data1.csv')
+    predicted_df= pd.read_csv(r'F:/NeuroNerds-AdEvaluator/Project Data/final_predicted_data.csv')
 
     #Change timestamp format for furuthe calculation
     predicted_df['TimeStamp']= pd.to_datetime(predicted_df['TimeStamp'])
@@ -46,9 +56,11 @@ def index():
 
     Score_model_df = predicted_df.filter(['TimeStamp','Prediction_Class'])
     Score_model_df['TimeStamp'][0]
-    score = {}
+    score= {}
 
     def score_model():
+        
+        ############################# ATTENTION SCORE MODEL ###############################################################################################
         
         count_rows = predicted_df.shape[0]
         count_high_attention = len(predicted_df[predicted_df["Prediction_Class"]==2])
@@ -62,8 +74,7 @@ def index():
         highest_statement = 0
         highest_score_val = 0
         lowest_score_val = 0
-        #statement = ''
-        
+
         if (each_min_high_attention_score > each_min_medium_attention_score) and (each_min_high_attention_score > each_min_low_attention_score):
             highest_score_val = each_min_high_attention_score
             highest_statement = 'Priority in High Attentiveness'
@@ -71,7 +82,7 @@ def index():
                 lowest_score_val = each_min_medium_attention_score
             else:
                 lowest_score_val = each_min_low_attention_score
-
+ 
                 
         elif (each_min_high_attention_score < each_min_medium_attention_score) and (each_min_medium_attention_score > each_min_low_attention_score):
             highest_score_val = each_min_medium_attention_score
@@ -80,7 +91,7 @@ def index():
                 lowest_score_val = each_min_high_attention_score
             else:
                 lowest_score_val = each_min_low_attention_score
-
+ 
                 
         elif (each_min_high_attention_score < each_min_low_attention_score) and (each_min_medium_attention_score < each_min_low_attention_score):
             highest_score_val = each_min_low_attention_score
@@ -89,37 +100,38 @@ def index():
                 lowest_score_val = each_min_high_attention_score
             else:
                 lowest_score_val = each_min_medium_attention_score
-
+ 
 
         average_score = (highest_score_val - lowest_score_val) / 2
-
+ 
         score[1] = each_min_high_attention_score
         score[2] = each_min_low_attention_score
         score[3] = each_min_medium_attention_score
         score[4] = average_score
         score[5] = highest_statement #append ovrall score data\
-
+ 
+        score_model.each_min_high_attention_score = each_min_high_attention_score
+        score_model.each_min_low_attention_score = each_min_low_attention_score
+        score_model.each_min_medium_attention_score = each_min_medium_attention_score
+        score_model.average_score = average_score
+        score_model.highest_statement = highest_statement
     
-        #attention_score[min] = (High_attention_score[min] + Medium_attention_score[min] + Low_attention_score[min])
-        #print('Overall Row count : ', count_rows)
+    ############################# END OF ENJOYMENT SCORE MODEL ###############################################################################################
 
-        #print("_____________________________________________________________")
-
-        #print('High Attention Row count:', count_high_attention)
-        #print('Medium Attention Row count:', count_medium_attention)
-        #print('Low Attention Row count:', count_low_attention)
-
-        #print("_____________________________________________________________")
-
-        #print('High Attention overall percentage : ', each_min_high_attention_score,"%")
-        #print('Medium Attention overall percentage : ', each_min_medium_attention_score,"%")
-        #print('Low Attention overall percentage : ', each_min_low_attention_score,"%")
-
-    
     score_model()
     
-    return score
+    ############################# DB CONNECTION ###############################################################################################
+
+    high_attention_score = score_model.each_min_high_attention_score
+    low_attention_score = score_model.each_min_low_attention_score
+    medium_attention_score = score_model.each_min_medium_attention_score
+    highest_score_atten = score_model.average_score
+    highest_state = score_model.highest_statement
+    
+    dbCon = db1.connectMysql(high_attention_score,low_attention_score,medium_attention_score, highest_score_atten, highest_state) 
+
+    return score #return calculated scores dictonary to api port
 
 if __name__ == "__main__":
-        #app.run(host='0.0.0.0', port = 3019, debug=False)
         app.run(host='0.0.0.0', port = 3019, debug=False)
+        # serve(app, port = 3018)
